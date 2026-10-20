@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>記事本閱讀器</title>
+<style>
+  :root{
+    --bg:#f6f3ec; --card:#fffdf8; --text:#2b2a27; --sub:#8a857a;
+    --accent:#2f6f5e; --accent-d:#245648; --line:#e4dfd2;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#16171a; --card:#1f2024; --text:#e9e7e1; --sub:#8d8a82; --accent:#5fb59d; --accent-d:#4a9983; --line:#2e3036; }
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;margin:0}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+    display:flex; flex-direction:column;
+    padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  header{
+    display:flex; align-items:center; gap:8px;
+    padding:10px 14px; border-bottom:1px solid var(--line);
+  }
+  header h1{font-size:16px; margin:0; flex:1; font-weight:600}
+  header button, header label{
+    background:none; border:1px solid var(--line); color:var(--text);
+    border-radius:8px; padding:6px 10px; font-size:14px; cursor:pointer;
+  }
+  .progress{height:3px; background:var(--line)}
+  .progress div{height:100%; width:0; background:var(--accent); transition:width .2s}
+  main{
+    flex:1; overflow-y:auto; padding:18px 16px;
+    display:flex; flex-direction:column; justify-content:center;
+  }
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:16px;
+    padding:24px 20px; margin:auto 0;
+    box-shadow:0 2px 10px rgba(0,0,0,.05);
+  }
+  .counter{font-size:13px; color:var(--sub); margin-bottom:12px}
+  #sentence{
+    font-size:22px; line-height:1.85; word-break:break-word; white-space:pre-wrap;
+  }
+  #sentence b{color:var(--accent)}
+  .jump{padding:0 18px 6px; display:flex; align-items:center; gap:10px}
+  .jump input[type=range]{flex:1; accent-color:var(--accent)}
+  .jump span{font-size:13px; color:var(--sub); min-width:64px; text-align:right}
+  footer{
+    display:grid; grid-template-columns:1fr 1fr; gap:12px;
+    padding:10px 16px 16px;
+  }
+  footer button{
+    font-size:18px; font-weight:600; padding:18px 0; border:none; border-radius:14px;
+    background:var(--accent); color:#fff; cursor:pointer;
+  }
+  footer button:active{background:var(--accent-d)}
+  footer button:disabled{opacity:.35}
+  footer .prev{background:var(--card); color:var(--text); border:1px solid var(--line)}
+  footer .prev:active{background:var(--line)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="title">記事本閱讀器</h1>
+  <button id="smaller" aria-label="縮小字體">A-</button>
+  <button id="bigger" aria-label="放大字體">A+</button>
+  <label>開啟<input type="file" id="file" accept=".txt,text/plain" hidden></label>
+</header>
+<div class="progress"><div id="bar"></div></div>
+
+<main id="main">
+  <div class="card">
+    <div class="counter" id="counter"></div>
+    <div id="sentence"></div>
+  </div>
+</main>
+
+<div class="jump">
+  <input type="range" id="slider" min="1" max="1" value="1">
+  <span id="pos"></span>
+</div>
+
+<footer>
+  <button class="prev" id="prev">◀ 上一句</button>
+  <button class="next" id="next">下一句 ▶</button>
+</footer>
+
+<script>
+const DEFAULT_NAME = "新增 文字文件.txt";
+const DEFAULT_TEXT = `資訊系統中可能被駭客利用來發動攻擊的設計缺陷或弱點,稱為安全漏洞(Security Vulnerability)。
+軟體原廠為了修補這些安全缺陷所發布的更新檔案,通常被稱為 修補程式 (Patch) 。
+【例題 1】 2017 年著名的 WannaCry 勒索病毒橫掃全球，癱瘓了無數醫院與銀行的電腦。事後發現，微軟其實早在兩個月前就發布了防禦這個攻擊的「Windows更新檔」。為什麼還是有這麼多人受害？
+【解析】微軟雖然發布了更新檔（修補程式 Patch），但許多企業的 IT 部門覺得「更新系統很麻煩、怕影響軟體相容性」，所以沒有幫公司的電腦安裝更新。
+這導致這些電腦上的「** 安全漏洞 (Vulnerability)**」一直呈現敞開的狀態。
+WannaCry 就是利用了這個名為 EternalBlue 的已知漏洞鑽進系統的。這證明了「未及時修補漏洞」是企業資安防禦中最致命的人為怠惰。
+潛入電腦將檔案惡意加密,並要求支付金錢才給予解密金鑰的病毒稱為 勒索軟體(Ransomware) 。
+系統用來核實使用者真實身分的過程,稱為身分驗證(Identity Authentication) 。
+【例題 1】在資訊安全領域,用來證明「你是誰(身份驗證)」的證據,通常被歸類為三大要素(Factors)。請分別舉出這三種要素的實際例子。
+【解析】資安界公認的身分驗證三大要素為:
+1. ** 你所知道的事物 (Something you know):** 例如你腦袋裡記住的登入「密碼」或提款卡「PIN 碼」。
+2. ** 你所擁有的事物 (Something you have):** 例如你口袋裡的手機(接收簡訊 OTP 驗證碼)或銀行的硬體動態密碼產生器 (Token)。
+3. ** 你所具備的特徵 (Something you are):** 例如你身體的「指紋」、「臉部辨識 (Face ID)」或聲紋等生物特徵。
+結合密碼與手機驗證碼等多重證據才能登入的防護機制為多因素驗證 (Multi-Factor Authentication, MFA) 。
+【例題 1】小華的 Google 帳號密碼在網咖被駭客側錄偷走了。但當駭客半夜在國外嘗試登入小華的信箱時,卻被系統擋在門外。這是因為小華開啟了什麼設定?運作原理為何?
+【解析】因為小華開啟了 **「多因素驗證 (MFA / 雙重驗證 2FA)」**。
+當駭客輸入正確的密碼(第一因素)後,系統判定這是來自陌生設備的登入,立刻要求進行第二步驗證:發送一個「6 位數動態密碼 (OTP)」到小華的手機簡訊裡(第二因素:擁有的設備)。
+因為駭客沒有小華的實體手機,拿不到驗證碼,登入程序宣告失敗。MFA 成功防堵了單憑密碼外洩就導致的帳號劫持災難。
+常見的 Google Authenticator APP 是一種會每 30 秒自動更新一次密碼的軟體,用來產生 動態密碼/OTP 作為第二層驗證。
+【專有名詞】資料備份 (Data Backup)
+【解 釋】 對抗硬碟損壞、人為誤刪與勒索軟體的最強防線。指將原始資料複製一份或多份，儲存在另一個獨立的實體或雲端空間中。資安界推崇的黃金準則是 **「3-2-1 備份原則」**：至少要有 3 份資料副本，存放在 2 種不同的儲存媒體上（如硬碟與磁帶），並且至少要有 1 份備份存放在「異地（如雲端或另一個縣市）」，以防範火災或地震將機房全部摧毀。
+業界公認最安全的備份準則是「 3-2-1 原則」,強調 3 份副本、2 種媒體、1 份異地。
+評估災難復原能力的兩大核心指標為:RPO(復原 點 目標)與 RTO(復原時間目標)。
+【專有名詞】資料生命週期 (Data Lifecycle)
+【解 釋】 將資料視為一個「有生老病死」的有機體。資料生命週期管理(DLM)定義了資料從「產生/蒐集 → 儲存 → 處理/分析 → 封存 (Archive) → 到最終的銷毀 (Destruction)」的完整過程。這在合規性上非常重要,因為法規(如個資法)要求:當資料的「特定利用目的」消失或保存期限屆滿時,企業必須主動將該資料安全地刪除,不得無限期囤積。
+【專有名詞】資料銷毀 (Data Destruction / Data Erasure)
+【解 釋】 資料生命週期的最終站。在資訊安全中，「把檔案丟進資源回收桶並清空」或「按下格式化 (Format)」** 絕對不等於資料被銷毀 **。駭客只要用免費軟體就能將資料 100% 救回。真正的資料銷毀，必須使用軟體進行「多次無意義亂碼覆寫（Wiping）」，或是透過硬體消磁（Degaussing）、甚至是將硬碟丟進工業碎紙機進行「實體破壞」，確保機密絕對無法被還原。
+企業內部負責制定資訊安全策略並防禦網路攻擊的最高階主管,簡稱為 CISO/資訊安全長 (Chief Information Security Officer)。
+歐盟 GDPR 法規強制要求處理大量敏感個資的企業,必須設立 DPO/資料保護官(Data Protection Officer),以監督內部的個資處理是否合法。
+
+
+【專有名詞】標籤 (Target / Label)
+【解 釋】 在監督式學習中，標籤就是模型試圖去預測的「** 標準答案 **」或「** 目標變數（Dependent Variable，常以 Y 表示）**」。在訓練階段，資料集必須包含「特徵 X」與正確的「標籤 Y 」，模型才能計算誤差並進行學習。如果標籤是類別（如貓/狗），就是分類任務；如果標籤是連續數字（如房價），就是迴歸任務。非監督式學習則完全沒有標籤。
+若模型預測的目標是「連續數值」(如房價、體重),此任務稱為 迴歸 (Regression) 。
+若模型預測的目標是「離散類別」(如判定信件是否為垃圾信),此任務稱為分類 (Classification) 。
+著名的主成分分析 (PCA) 是一種用來壓縮資料特徵數量的技術,它屬於非監督式學習中的 降維 應用。
+【專有名詞】半監督式學習 (Semi-supervised Learning)
+【解 釋】 介於監督式與非監督式學習之間的折衷方案。在真實世界中,收集資料很便宜,但「人工標註答案」極度昂貴。半監督式學習的做法是:**「使用『極少量』有標籤的資料,搭配『海量』無標籤的資料來共同訓練模型」**。模型會先用少量有標籤資料建立初步認知,接著去推測海量無標籤資料的答案(偽標籤 Pseudo-labeling),再用這些數據反過來強化自己。
+將資料輸入模型,讓模型找出規律並調整內部參數的過程,稱為 訓練/擬合 (Training/Fitting)
+將訓練完成的模型應用於全新未知資料以產生結果的過程,稱為 推論/預測 (Inference/Prediction)
+若一個工程師抱怨「這個深度學習模型的訓練成本太高了」，這通常意味著什麼？ 演算法極度複雜且資料量龐大，需要耗費數百張昂貴的 GPU 顯示卡連續運算好幾個禮拜，產生巨大的電費與硬體租賃成本
+【例題 1】 ChatGPT 這個 AI 模型，在 OpenAI 的研發機房裡進行「訓練」，跟你現在在手機上打字問它問題（這叫「推論」），這兩個動作在運算資源的消耗上有何巨大差別？
+【解析】** 訓練 (Training) 極度昂貴：** 需要成千上萬張頂級 GPU，花費幾個月的時間反覆運算海量數據來微調參數。就像學生苦讀十年準備大考。
+** 推論 (Inference) 相對輕量：** 模型已經學會了，權重已經固定。當你在手機上問它問題時，它只是執行一次簡單的「前向傳播（Forward Pass）」矩陣乘法來給出答案。就像學生進考場只要花幾秒鐘寫下答案，甚至用一般的手機晶片（如
+NPU）就能完成推論運算。
+【專有名詞】偏差 / 截距 (Bias)
+【解 釋】 在機器學習的數學模型（如線性迴歸 Y = WX + B 或神經網路）中，偏差（常以 B 表示）是一個獨立於輸入特徵的常數項。它的作用類似於數學函數中的「截距」，允許模型的預測基準線整體向上或向下平移。即使所有的輸入特徵 X 都是 0，模型依然可以透過偏差 B 輸出一個基礎預測值。它賦予了模型擬合複雜資料的靈活性。
+【例題 1】我們訓練一個模型來預測「計程車車資」。特徵只有「行駛里程數(X)」。如果模型公式沒有偏差 B（即 Y = WX），會發生什麼問題？加入偏差 B 後有何改變？
+【解析】如果沒有偏差 B，當里程數 X = 0 時，預測的車資 Y 必然是 0 元。但這不符合現實，因為計程車有「起跳價（如 85 元）」。加入偏差後（Y = WX + B），模型可以將 B 學習並設定為 85。即使車子還沒開（X = 0），基準預測值依然是 85 元。這個 B（偏差）讓模型能夠平移起點，完美契合現實世界中非零起點的資料分佈。
+權重 (W) 改變的是預測函數的傾斜角度,而偏差 (B) 改變的是函數整體的 上下平移/起點位置。
+衡量模型預測值與真實標籤之間差距的數學函數,稱為 損失函數 (Loss Function) 。
+當模型的預測結果與真實答案完全一模一樣時,其損失值在理想狀況下應等於0 。
+【例題 1】一位老師在改期末考卷。計算「王小明這張考卷被扣了幾分」跟計算「全班 30 位同學平均被扣了幾分」，哪一個對應到損失函數？哪一個對應到成本函數？
+【解析】這是一個完美的比喻。
+- 計算單一個學生「王小明」的扣分，就像是計算模型在單一筆資料上的誤差，這對應到 **「損失函數 (Loss Function)」**。
+- 把全班 30 人的扣分加總起來算平均，代表了這位老師這次教學的整體成效好壞。這對應到 **「成本函數 (Cost Function)」**。演算法優化的目標，是讓全班的平均扣分（成本）降到最低。
+損失函數計算的是單一筆樣本的誤差,而成本函數計算的是 全體/所有 訓練樣本的平均誤差。
+最著名的成本函數之一是「均方誤差 (MSE)」,它是將所有預測誤差平方後,再除以樣本總數求 平均值 。`;
+
+const $ = id => document.getElementById(id);
+let lines = [];
+let idx = 0;
+let fontSize = 22;
+let storeKey = "reader:" + DEFAULT_NAME;
+
+function safe(fn){ try { return fn(); } catch(e){ return null; } }
+
+function parse(text){
+  return text.split(/\r?\n/).map(s => s.trim()).filter(s => s.length > 0);
+}
+
+function esc(s){
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function render(){
+  if(!lines.length){
+    $("sentence").textContent = "（檔案沒有內容）";
+    $("counter").textContent = "";
+    return;
+  }
+  const html = esc(lines[idx]).replace(/\*\*\s*(.+?)\s*\*\*/g, "<b>$1</b>");
+  $("sentence").innerHTML = html;
+  $("counter").textContent = "第 " + (idx+1) + " 句 / 共 " + lines.length + " 句";
+  $("pos").textContent = (idx+1) + " / " + lines.length;
+  $("bar").style.width = ((idx+1)/lines.length*100) + "%";
+  $("slider").max = lines.length;
+  $("slider").value = idx+1;
+  $("prev").disabled = idx === 0;
+  $("next").disabled = idx === lines.length-1;
+  $("main").scrollTop = 0;
+  safe(() => localStorage.setItem(storeKey, idx));
+}
+
+function go(n){
+  if(!lines.length) return;
+  idx = Math.max(0, Math.min(lines.length-1, n));
+  render();
+}
+
+function applyFont(){
+  $("sentence").style.fontSize = fontSize + "px";
+  safe(() => localStorage.setItem("reader:font", fontSize));
+}
+
+function load(name, text){
+  lines = parse(text);
+  storeKey = "reader:" + name;
+  $("title").textContent = name;
+  const saved = parseInt(safe(() => localStorage.getItem(storeKey)), 10);
+  idx = (!isNaN(saved) && saved >= 0 && saved < lines.length) ? saved : 0;
+  render();
+}
+
+$("prev").onclick = () => go(idx-1);
+$("next").onclick = () => go(idx+1);
+$("slider").oninput = e => go(parseInt(e.target.value,10)-1);
+$("bigger").onclick = () => { fontSize = Math.min(44, fontSize+2); applyFont(); };
+$("smaller").onclick = () => { fontSize = Math.max(14, fontSize-2); applyFont(); };
+
+$("file").onchange = e => {
+  const f = e.target.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = () => load(f.name, String(r.result).replace(/^\uFEFF/, ""));
+  r.readAsText(f, "UTF-8");
+};
+
+// 鍵盤與滑動手勢
+document.addEventListener("keydown", e => {
+  if(e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === " ") { e.preventDefault(); go(idx+1); }
+  if(e.key === "ArrowLeft"  || e.key === "ArrowUp") { e.preventDefault(); go(idx-1); }
+});
+let sx = 0, sy = 0;
+$("main").addEventListener("touchstart", e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, {passive:true});
+$("main").addEventListener("touchend", e => {
+  const dx = e.changedTouches[0].clientX - sx;
+  const dy = e.changedTouches[0].clientY - sy;
+  if(Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)*1.5){
+    go(dx < 0 ? idx+1 : idx-1);
+  }
+}, {passive:true});
+
+const savedFont = parseInt(safe(() => localStorage.getItem("reader:font")), 10);
+if(!isNaN(savedFont)) fontSize = savedFont;
+applyFont();
+load(DEFAULT_NAME, DEFAULT_TEXT);
+</script>
+</body>
+</html>
