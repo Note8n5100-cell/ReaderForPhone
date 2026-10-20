@@ -32,14 +32,23 @@
   .progress{height:3px; background:var(--line)}
   .progress div{height:100%; width:0; background:var(--accent); transition:width .2s}
   main{
-    flex:1; overflow-y:auto; padding:18px 16px;
-    display:flex; flex-direction:column; justify-content:center;
+    flex:1; overflow-y:auto; padding:12px 16px;
+    display:flex; flex-direction:column; gap:8px;
   }
   .card{
-    background:var(--card); border:1px solid var(--line); border-radius:16px;
-    padding:24px 20px; margin:auto 0;
-    box-shadow:0 2px 10px rgba(0,0,0,.05);
+    background:var(--card); border:1px solid var(--accent); border-radius:16px;
+    padding:20px 18px; margin:4px 0;
+    box-shadow:0 2px 10px rgba(0,0,0,.08);
   }
+  .ctx{
+    color:var(--sub); font-size:15px; line-height:1.6; padding:8px 10px;
+    border-radius:10px; cursor:pointer; word-break:break-word;
+    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  .ctx:empty{visibility:hidden; padding:0; cursor:default}
+  .ctx.far{opacity:.55; font-size:14px; -webkit-line-clamp:2}
+  .ctx:active{background:var(--line)}
+  .ctx b{color:inherit}
   .counter{font-size:13px; color:var(--sub); margin-bottom:12px}
   #sentence{
     font-size:22px; line-height:1.85; word-break:break-word; white-space:pre-wrap;
@@ -73,10 +82,14 @@
 <div class="progress"><div id="bar"></div></div>
 
 <main id="main">
-  <div class="card">
+  <div class="ctx" id="p2"></div>
+  <div class="ctx" id="p1"></div>
+  <div class="card" id="cur">
     <div class="counter" id="counter"></div>
     <div id="sentence"></div>
   </div>
+  <div class="ctx" id="n1"></div>
+  <div class="ctx" id="n2"></div>
 </main>
 
 <div class="jump">
@@ -166,14 +179,23 @@ function esc(s){
   return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
 
+function fmt(s){
+  return esc(s).replace(/\*\*\s*(.+?)\s*\*\*/g, "<b>$1</b>");
+}
+
 function render(){
   if(!lines.length){
     $("sentence").textContent = "（檔案沒有內容）";
     $("counter").textContent = "";
     return;
   }
-  const html = esc(lines[idx]).replace(/\*\*\s*(.+?)\s*\*\*/g, "<b>$1</b>");
-  $("sentence").innerHTML = html;
+  $("sentence").innerHTML = fmt(lines[idx]);
+  [["p2",-2],["p1",-1],["n1",1],["n2",2]].forEach(([id,d]) => {
+    const t = lines[idx+d];
+    $(id).innerHTML = t === undefined ? "" : fmt(t);
+    $(id).dataset.d = d;
+    $(id).classList.toggle("far", Math.abs(d) === 2);
+  });
   $("counter").textContent = "第 " + (idx+1) + " 句 / 共 " + lines.length + " 句";
   $("pos").textContent = (idx+1) + " / " + lines.length;
   $("bar").style.width = ((idx+1)/lines.length*100) + "%";
@@ -182,6 +204,8 @@ function render(){
   $("prev").disabled = idx === 0;
   $("next").disabled = idx === lines.length-1;
   $("main").scrollTop = 0;
+  const m = $("main"), c = $("cur");
+  m.scrollTop = Math.max(0, c.offsetTop - (m.clientHeight - c.offsetHeight) / 2);
   safe(() => localStorage.setItem(storeKey, idx));
 }
 
@@ -205,6 +229,9 @@ function load(name, text){
   render();
 }
 
+["p2","p1","n1","n2"].forEach(id => {
+  $(id).onclick = () => { if($(id).textContent) go(idx + parseInt($(id).dataset.d,10)); };
+});
 $("prev").onclick = () => go(idx-1);
 $("next").onclick = () => go(idx+1);
 $("slider").oninput = e => go(parseInt(e.target.value,10)-1);
