@@ -42,11 +42,12 @@
     box-shadow:0 2px 10px rgba(0,0,0,.08);
   }
   .ctx{
-    color:var(--sub); font-size:12px; line-height:1.45; padding:2px 8px;
+    color:var(--text); font-size:12px; line-height:1.45; padding:2px 8px;
     border-radius:8px; cursor:pointer; word-break:break-word;
   }
   .ctx:empty{display:none}
   .ctx.far{font-size:11px}
+  .no{color:var(--accent); font-weight:700; font-variant-numeric:tabular-nums}
 
   /* 全螢幕模式 */
   body.fs header, body.fs .progress, body.fs .jump, body.fs footer{display:none}
@@ -247,6 +248,10 @@ function toast(msg){
   toastTimer = setTimeout(() => t.classList.remove("show"), 1100);
 }
 
+function num(i){
+  return '<span class="no">' + (i+1) + '.</span> ';
+}
+
 function fmt(s){
   return esc(s).replace(/\*\*\s*(.+?)\s*\*\*/g, "<b>$1</b>");
 }
@@ -257,13 +262,12 @@ function render(){
     $("count").textContent = "";
     return;
   }
-  $("sentence").innerHTML = fmt(lines[idx]);
+  $("sentence").innerHTML = num(idx) + fmt(lines[idx]);
   CTX.forEach(([id,d]) => {
     const t = lines[idx+d];
-    $(id).innerHTML = t === undefined ? "" : fmt(t);
+    $(id).innerHTML = t === undefined ? "" : num(idx+d) + fmt(t);
     $(id).dataset.d = d;
     $(id).classList.toggle("far", Math.abs(d) >= 2);
-    $(id).style.opacity = [1,1,.85,.7,.55,.42][Math.abs(d)];
   });
   $("count").textContent = (idx+1) + " / " + lines.length;
   if(!firstRender) toast("第 " + (idx+1) + " 句 / 共 " + lines.length + " 句");
