@@ -46,7 +46,7 @@
     border-radius:8px; cursor:pointer; word-break:break-word;
   }
   .ctx:empty{display:none}
-  .ctx.far{opacity:.55; font-size:11px}
+  .ctx.far{font-size:11px}
 
   /* 全螢幕模式 */
   body.fs header, body.fs .progress, body.fs .jump, body.fs footer{display:none}
@@ -60,9 +60,9 @@
   .fsnav{
     display:none; position:fixed; top:50%; transform:translateY(-50%);
     width:48px; height:96px; border:1px solid var(--line); border-radius:12px;
-    background:var(--card); color:var(--text); font-size:22px; z-index:5; cursor:pointer;
+    background:#2e9e6b; border-color:#2e9e6b; color:#fff; font-size:22px; z-index:5; cursor:pointer;
   }
-  .fsnav:active{background:var(--line)}
+  .fsnav:active{background:#237a52}
   .fsnav:disabled{opacity:.3}
   .fsnav.l{left:6px}
   .fsnav.r{right:6px}
@@ -78,7 +78,7 @@
   body.fs #toast{top:auto; bottom:calc(30px + env(safe-area-inset-bottom))}
   #count{
     display:flex; align-items:center; justify-content:center;
-    font-size:15px; font-weight:600; color:var(--text); min-width:84px; text-align:center;
+    font-size:13px; font-weight:600; color:var(--text); min-width:52px; text-align:center; white-space:nowrap;
   }
   #rand{
     background:var(--accent); color:#fff; border:none; border-radius:10px;
@@ -95,13 +95,18 @@
   .jump{padding:2px 18px 6px; display:flex; align-items:center; gap:10px}
   .jump input[type=range]{flex:1; accent-color:var(--accent)}
   footer{
-    display:grid; grid-template-columns:1fr auto 1fr; gap:10px;
+    display:grid; grid-template-columns:auto 1fr auto 1fr auto; gap:6px;
     padding:10px 16px 16px;
   }
   footer button{
-    font-size:18px; font-weight:600; padding:18px 0; border:none; border-radius:14px;
-    background:var(--accent); color:#fff; cursor:pointer;
+    font-size:15px; font-weight:600; padding:16px 2px; border:none; border-radius:12px;
+    background:var(--accent); color:#fff; cursor:pointer; white-space:nowrap;
   }
+  footer button.edge{
+    font-size:13px; padding:16px 8px; background:var(--card); color:var(--text);
+    border:1px solid var(--line);
+  }
+  footer button.edge:active{background:var(--line)}
   footer button:active{background:var(--accent-d)}
   footer button:disabled{opacity:.35}
   footer .prev{background:var(--card); color:var(--text); border:1px solid var(--line)}
@@ -120,6 +125,9 @@
 <div class="progress"><div id="bar"></div></div>
 
 <main id="main">
+  <div class="ctx" id="p5"></div>
+  <div class="ctx" id="p4"></div>
+  <div class="ctx" id="p3"></div>
   <div class="ctx" id="p2"></div>
   <div class="ctx" id="p1"></div>
   <div class="card" id="cur">
@@ -127,6 +135,9 @@
   </div>
   <div class="ctx" id="n1"></div>
   <div class="ctx" id="n2"></div>
+  <div class="ctx" id="n3"></div>
+  <div class="ctx" id="n4"></div>
+  <div class="ctx" id="n5"></div>
 </main>
 
 <div class="jump">
@@ -136,9 +147,11 @@
 </div>
 
 <footer>
+  <button class="edge" id="first">第一句</button>
   <button class="prev" id="prev">◀ 上一句</button>
   <div id="count"></div>
   <button class="next" id="next">下一句 ▶</button>
+  <button class="edge" id="last">最後句</button>
 </footer>
 <button class="fsnav l" id="fsPrev" aria-label="上一句">◀<br><small style="font-size:11px">上一句</small></button>
 <button class="fsnav r" id="fsNext" aria-label="下一句">▶<br><small style="font-size:11px">下一句</small></button>
@@ -221,6 +234,7 @@ function esc(s){
   return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
 
+const CTX = [["p5",-5],["p4",-4],["p3",-3],["p2",-2],["p1",-1],["n1",1],["n2",2],["n3",3],["n4",4],["n5",5]];
 let firstRender = true;
 let orig = [];
 let shuffled = false;
@@ -244,11 +258,12 @@ function render(){
     return;
   }
   $("sentence").innerHTML = fmt(lines[idx]);
-  [["p2",-2],["p1",-1],["n1",1],["n2",2]].forEach(([id,d]) => {
+  CTX.forEach(([id,d]) => {
     const t = lines[idx+d];
     $(id).innerHTML = t === undefined ? "" : fmt(t);
     $(id).dataset.d = d;
-    $(id).classList.toggle("far", Math.abs(d) === 2);
+    $(id).classList.toggle("far", Math.abs(d) >= 2);
+    $(id).style.opacity = [1,1,.85,.7,.55,.42][Math.abs(d)];
   });
   $("count").textContent = (idx+1) + " / " + lines.length;
   if(!firstRender) toast("第 " + (idx+1) + " 句 / 共 " + lines.length + " 句");
@@ -256,8 +271,8 @@ function render(){
   $("bar").style.width = ((idx+1)/lines.length*100) + "%";
   $("slider").max = lines.length;
   $("slider").value = idx+1;
-  $("prev").disabled = $("fsPrev").disabled = idx === 0;
-  $("next").disabled = $("fsNext").disabled = idx === lines.length-1;
+  $("prev").disabled = $("fsPrev").disabled = $("first").disabled = idx === 0;
+  $("next").disabled = $("fsNext").disabled = $("last").disabled = idx === lines.length-1;
   $("main").scrollTop = 0;
   const m = $("main"), c = $("cur");
   m.scrollTop = Math.max(0, c.offsetTop - (m.clientHeight - c.offsetHeight) / 2);
@@ -320,6 +335,8 @@ $("unshuf").onclick = () => {
   idx = p >= 0 ? p : 0;
   render();
 };
+$("first").onclick = () => go(0);
+$("last").onclick = () => go(lines.length-1);
 $("fsPrev").onclick = () => go(idx-1);
 $("fsNext").onclick = () => go(idx+1);
 
@@ -339,7 +356,7 @@ document.addEventListener("fullscreenchange", () => {
   }
 });
 
-["p2","p1","n1","n2"].forEach(id => {
+CTX.forEach(([id]) => {
   $(id).onclick = () => { if($(id).textContent) go(idx + parseInt($(id).dataset.d,10)); };
 });
 $("prev").onclick = () => go(idx-1);
