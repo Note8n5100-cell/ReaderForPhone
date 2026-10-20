@@ -9,8 +9,9 @@
     --bg:#f6f3ec; --card:#fffdf8; --text:#2b2a27; --sub:#8a857a;
     --accent:#2f6f5e; --accent-d:#245648; --line:#e4dfd2;
   }
-  @media (prefers-color-scheme: dark){
-    :root{ --bg:#16171a; --card:#1f2024; --text:#e9e7e1; --sub:#8d8a82; --accent:#5fb59d; --accent-d:#4a9983; --line:#2e3036; }
+  :root[data-theme="dark"]{
+    --bg:#000; --card:#0d0d0d; --text:#fff; --sub:#a8a8a8;
+    --accent:#6fd0b4; --accent-d:#4fae93; --line:#2a2a2a;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{height:100%;margin:0}
@@ -32,33 +33,56 @@
   .progress{height:3px; background:var(--line)}
   .progress div{height:100%; width:0; background:var(--accent); transition:width .2s}
   main{
-    flex:1; overflow-y:auto; padding:12px 16px;
-    display:flex; flex-direction:column; gap:8px;
+    flex:1; overflow-y:auto; padding:8px 16px;
+    display:flex; flex-direction:column; gap:1px;
   }
   .card{
-    background:var(--card); border:1px solid var(--accent); border-radius:16px;
-    padding:20px 18px; margin:4px 0;
+    background:var(--card); border:1px solid var(--accent); border-radius:14px;
+    padding:14px 16px; margin:1px 0; cursor:pointer;
     box-shadow:0 2px 10px rgba(0,0,0,.08);
   }
   .ctx{
-    color:var(--sub); font-size:15px; line-height:1.6; padding:8px 10px;
-    border-radius:10px; cursor:pointer; word-break:break-word;
-    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
+    color:var(--sub); font-size:12px; line-height:1.45; padding:2px 8px;
+    border-radius:8px; cursor:pointer; word-break:break-word;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
   }
   .ctx:empty{visibility:hidden; padding:0; cursor:default}
-  .ctx.far{opacity:.55; font-size:14px; -webkit-line-clamp:2}
+  .ctx.far{opacity:.55; font-size:11px; -webkit-line-clamp:1}
+
+  /* 全螢幕模式 */
+  body.fs header, body.fs .progress, body.fs .jump, body.fs footer, body.fs .ctx{display:none}
+  body.fs main{justify-content:center; padding:20px}
+  body.fs .card{border:none; box-shadow:none; background:transparent; padding:10px}
+  body.fs #sentence{font-size:calc(var(--fs, 22px) * 1.25)}
+
+  /* 換句提示 */
+  #toast{
+    position:fixed; left:50%; top:64px; transform:translateX(-50%);
+    background:rgba(30,30,30,.9); color:#fff; padding:8px 18px; border-radius:20px;
+    font-size:15px; font-weight:600; pointer-events:none; opacity:0; transition:opacity .2s; z-index:10;
+  }
+  #toast.show{opacity:1}
+  body.fs #toast{top:auto; bottom:calc(30px + env(safe-area-inset-bottom))}
+  #count{
+    display:flex; align-items:center; justify-content:center;
+    font-size:15px; font-weight:600; color:var(--text); min-width:84px; text-align:center;
+  }
+  #rand{
+    background:var(--accent); color:#fff; border:none; border-radius:10px;
+    padding:8px 14px; font-size:15px; font-weight:600; cursor:pointer;
+  }
+  #rand:active{background:var(--accent-d)}
   .ctx:active{background:var(--line)}
   .ctx b{color:inherit}
   .counter{font-size:13px; color:var(--sub); margin-bottom:12px}
   #sentence{
-    font-size:22px; line-height:1.85; word-break:break-word; white-space:pre-wrap;
+    font-size:var(--fs, 22px); line-height:1.8; word-break:break-word; white-space:pre-wrap;
   }
   #sentence b{color:var(--accent)}
-  .jump{padding:0 18px 6px; display:flex; align-items:center; gap:10px}
+  .jump{padding:2px 18px 6px; display:flex; align-items:center; gap:10px}
   .jump input[type=range]{flex:1; accent-color:var(--accent)}
-  .jump span{font-size:13px; color:var(--sub); min-width:64px; text-align:right}
   footer{
-    display:grid; grid-template-columns:1fr 1fr; gap:12px;
+    display:grid; grid-template-columns:1fr auto 1fr; gap:10px;
     padding:10px 16px 16px;
   }
   footer button{
@@ -77,6 +101,7 @@
   <h1 id="title">記事本閱讀器</h1>
   <button id="smaller" aria-label="縮小字體">A-</button>
   <button id="bigger" aria-label="放大字體">A+</button>
+  <button id="theme" aria-label="切換黑底白字">🌙</button>
   <label>開啟<input type="file" id="file" accept=".txt,text/plain" hidden></label>
 </header>
 <div class="progress"><div id="bar"></div></div>
@@ -85,7 +110,6 @@
   <div class="ctx" id="p2"></div>
   <div class="ctx" id="p1"></div>
   <div class="card" id="cur">
-    <div class="counter" id="counter"></div>
     <div id="sentence"></div>
   </div>
   <div class="ctx" id="n1"></div>
@@ -94,13 +118,15 @@
 
 <div class="jump">
   <input type="range" id="slider" min="1" max="1" value="1">
-  <span id="pos"></span>
+  <button id="rand">🔀 亂數</button>
 </div>
 
 <footer>
   <button class="prev" id="prev">◀ 上一句</button>
+  <div id="count"></div>
   <button class="next" id="next">下一句 ▶</button>
 </footer>
+<div id="toast"></div>
 
 <script>
 const DEFAULT_NAME = "新增 文字文件.txt";
@@ -179,6 +205,16 @@ function esc(s){
   return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
 
+let firstRender = true;
+let toastTimer = null;
+function toast(msg){
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 1100);
+}
+
 function fmt(s){
   return esc(s).replace(/\*\*\s*(.+?)\s*\*\*/g, "<b>$1</b>");
 }
@@ -186,7 +222,7 @@ function fmt(s){
 function render(){
   if(!lines.length){
     $("sentence").textContent = "（檔案沒有內容）";
-    $("counter").textContent = "";
+    $("count").textContent = "";
     return;
   }
   $("sentence").innerHTML = fmt(lines[idx]);
@@ -196,8 +232,9 @@ function render(){
     $(id).dataset.d = d;
     $(id).classList.toggle("far", Math.abs(d) === 2);
   });
-  $("counter").textContent = "第 " + (idx+1) + " 句 / 共 " + lines.length + " 句";
-  $("pos").textContent = (idx+1) + " / " + lines.length;
+  $("count").textContent = (idx+1) + " / " + lines.length;
+  if(!firstRender) toast("第 " + (idx+1) + " 句 / 共 " + lines.length + " 句");
+  firstRender = false;
   $("bar").style.width = ((idx+1)/lines.length*100) + "%";
   $("slider").max = lines.length;
   $("slider").value = idx+1;
@@ -216,7 +253,7 @@ function go(n){
 }
 
 function applyFont(){
-  $("sentence").style.fontSize = fontSize + "px";
+  document.documentElement.style.setProperty("--fs", fontSize + "px");
   safe(() => localStorage.setItem("reader:font", fontSize));
 }
 
@@ -228,6 +265,38 @@ function load(name, text){
   idx = (!isNaN(saved) && saved >= 0 && saved < lines.length) ? saved : 0;
   render();
 }
+
+// 黑底白字切換
+function setTheme(t){
+  document.documentElement.dataset.theme = t;
+  $("theme").textContent = t === "dark" ? "☀️" : "🌙";
+  safe(() => localStorage.setItem("reader:theme", t));
+}
+$("theme").onclick = () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+
+// 亂數：隨機跳到另一句
+$("rand").onclick = () => {
+  if(lines.length < 2) return;
+  let n;
+  do { n = Math.floor(Math.random() * lines.length); } while(n === idx);
+  go(n);
+};
+
+// 點本句：全螢幕 / 還原
+function toggleFs(){
+  const on = document.body.classList.toggle("fs");
+  safe(() => {
+    if(on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
+    else if(!on && document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+  });
+  render();
+}
+$("cur").onclick = toggleFs;
+document.addEventListener("fullscreenchange", () => {
+  if(!document.fullscreenElement && document.body.classList.contains("fs")){
+    document.body.classList.remove("fs"); render();
+  }
+});
 
 ["p2","p1","n1","n2"].forEach(id => {
   $(id).onclick = () => { if($(id).textContent) go(idx + parseInt($(id).dataset.d,10)); };
@@ -261,6 +330,8 @@ $("main").addEventListener("touchend", e => {
   }
 }, {passive:true});
 
+setTheme(safe(() => localStorage.getItem("reader:theme")) ||
+  (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
 const savedFont = parseInt(safe(() => localStorage.getItem("reader:font")), 10);
 if(!isNaN(savedFont)) fontSize = savedFont;
 applyFont();
