@@ -46,28 +46,13 @@
     border-radius:8px; cursor:pointer; word-break:break-word;
   }
   .ctx:empty{display:none}
-  .ctx.far{font-size:11px}
   .no{color:var(--accent); font-weight:700; font-variant-numeric:tabular-nums}
 
   /* 全螢幕模式 */
   body.fs header, body.fs .progress, body.fs .jump, body.fs footer{display:none}
-  body.fs main{justify-content:safe center; padding:16px 58px}
-  body.fs .card{border:none; box-shadow:none; background:transparent; padding:10px}
+  body.fs main{justify-content:safe center; padding:16px}
+  body.fs .card{border:2px solid var(--accent); box-shadow:none; padding:16px}
   body.fs #sentence{font-size:calc(var(--fs, 22px) * 1.25)}
-  body.fs .ctx{font-size:13px}
-  body.fs .ctx.far{font-size:12px}
-
-  /* 全螢幕左右按鈕 */
-  .fsnav{
-    display:none; position:fixed; top:50%; transform:translateY(-50%);
-    width:48px; height:96px; border:1px solid var(--line); border-radius:12px;
-    background:#2e9e6b; border-color:#2e9e6b; color:#fff; font-size:22px; z-index:5; cursor:pointer;
-  }
-  .fsnav:active{background:#237a52}
-  .fsnav:disabled{opacity:.3}
-  .fsnav.l{left:6px}
-  .fsnav.r{right:6px}
-  body.fs .fsnav{display:block}
 
   /* 換句提示 */
   #toast{
@@ -126,6 +111,8 @@
 <div class="progress"><div id="bar"></div></div>
 
 <main id="main">
+  <div class="ctx" id="p7"></div>
+  <div class="ctx" id="p6"></div>
   <div class="ctx" id="p5"></div>
   <div class="ctx" id="p4"></div>
   <div class="ctx" id="p3"></div>
@@ -139,6 +126,8 @@
   <div class="ctx" id="n3"></div>
   <div class="ctx" id="n4"></div>
   <div class="ctx" id="n5"></div>
+  <div class="ctx" id="n6"></div>
+  <div class="ctx" id="n7"></div>
 </main>
 
 <div class="jump">
@@ -154,8 +143,6 @@
   <button class="next" id="next">下一句 ▶</button>
   <button class="edge" id="last">最後句</button>
 </footer>
-<button class="fsnav l" id="fsPrev" aria-label="上一句">◀<br><small style="font-size:11px">上一句</small></button>
-<button class="fsnav r" id="fsNext" aria-label="下一句">▶<br><small style="font-size:11px">下一句</small></button>
 <div id="toast"></div>
 
 <script>
@@ -235,7 +222,7 @@ function esc(s){
   return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
 
-const CTX = [["p5",-5],["p4",-4],["p3",-3],["p2",-2],["p1",-1],["n1",1],["n2",2],["n3",3],["n4",4],["n5",5]];
+const CTX = [["p7",-7],["p6",-6],["p5",-5],["p4",-4],["p3",-3],["p2",-2],["p1",-1],["n1",1],["n2",2],["n3",3],["n4",4],["n5",5],["n6",6],["n7",7]];
 let firstRender = true;
 let orig = [];
 let shuffled = false;
@@ -267,7 +254,6 @@ function render(){
     const t = lines[idx+d];
     $(id).innerHTML = t === undefined ? "" : num(idx+d) + fmt(t);
     $(id).dataset.d = d;
-    $(id).classList.toggle("far", Math.abs(d) >= 2);
   });
   $("count").textContent = (idx+1) + " / " + lines.length;
   if(!firstRender) toast("第 " + (idx+1) + " 句 / 共 " + lines.length + " 句");
@@ -275,8 +261,8 @@ function render(){
   $("bar").style.width = ((idx+1)/lines.length*100) + "%";
   $("slider").max = lines.length;
   $("slider").value = idx+1;
-  $("prev").disabled = $("fsPrev").disabled = $("first").disabled = idx === 0;
-  $("next").disabled = $("fsNext").disabled = $("last").disabled = idx === lines.length-1;
+  $("prev").disabled = $("first").disabled = idx === 0;
+  $("next").disabled = $("last").disabled = idx === lines.length-1;
   $("main").scrollTop = 0;
   const m = $("main"), c = $("cur");
   m.scrollTop = Math.max(0, c.offsetTop - (m.clientHeight - c.offsetHeight) / 2);
@@ -341,8 +327,6 @@ $("unshuf").onclick = () => {
 };
 $("first").onclick = () => go(0);
 $("last").onclick = () => go(lines.length-1);
-$("fsPrev").onclick = () => go(idx-1);
-$("fsNext").onclick = () => go(idx+1);
 
 // 點本句：全螢幕 / 還原
 function toggleFs(){
